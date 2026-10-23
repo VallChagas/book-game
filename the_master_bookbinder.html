@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Master Bookbinder & The Lost Manuscripts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=IM+Fell+English:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f0b08;
+            --leather-dark: #1f140e;
+            --parchment: #f4e8c1;
+            --gold-light: #fef08a;
+            --gold-main: #d97706;
+            --gold-dark: #78350f;
+            --accent-glow: #fbbf24;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-dark);
+            color: #e2e8f0;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        .font-serif-title {
+            font-family: 'Cinzel', serif;
+        }
+
+        .font-book {
+            font-family: 'IM Fell English', serif;
+        }
+
+        /* Parchment texture background */
+        .parchment-bg {
+            background-color: #f3e5ab;
+            background-image: radial-gradient(#d4a373 1px, transparent 0);
+            background-size: 24px 24px;
+            color: #2b1810;
+        }
+
+        /* Gold Foil Glow & Borders */
+        .gold-border {
+            border: 2px solid #d97706;
+            box-shadow: 0 0 15px rgba(217, 119, 6, 0.25), inset 0 0 10px rgba(217, 119, 6, 0.15);
+        }
+
+        .gold-text-glow {
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.5), 0 0 20px rgba(217, 119, 6, 0.3);
+        }
+
+        /* Dust Particles Canvas Overlay */
+        #dustCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #110d0a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #78350f;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #d97706;
+        }
+
+        /* Interactive Canvas for Ink Cleaning & Stitching */
+        #interactiveCanvas {
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        /* Book Cover Custom Preview */
+        .book-cover-preview {
+            box-shadow: 10px 15px 30px rgba(0,0,0,0.8), inset -5px 0 12px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+
+        /* Page Flip Effect */
+        .page-turn {
+            transform-origin: left center;
+            transition: transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1);
+        }
+        .page-turned {
+            transform: rotateY(-180deg);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-amber-950/20 text-stone-200 relative">
+
+    <!-- Ambient Ambient Particles Canvas -->
+    <canvas id="dustCanvas"></canvas>
+
+    <!-- Header / HUD Navbar -->
+    <header class="relative z-10 border-b border-amber-900/40 bg-stone-950/80 backdrop-blur-md px-4 py-3 md:px-8 flex flex-wrap justify-between items-center shadow-xl">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-600 to-amber-900 border border-amber-500/50 flex items-center justify-center text-xl shadow-lg">
+                📜
+            </div>
+            <div>
+                <h1 class="font-serif-title font-bold text-amber-200 text-sm md:text-lg tracking-wider gold-text-glow">THE MASTER BOOKBINDER</h1>
+                <p id="hud-rank" class="text-xs text-amber-500/80 font-medium">Apprentice Bookbinder</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4 text-xs md:text-sm my-2 md:my-0">
+            <!-- Gold Currency -->
+            <div class="flex items-center gap-1.5 bg-stone-900/90 border border-amber-800/60 px-3 py-1.5 rounded-full shadow-inner">
+                <span class="text-amber-400">🪙</span>
+                <span id="hud-gold" class="font-bold text-amber-200">120</span>
+                <span class="text-stone-400 text-xs">Gold</span>
+            </div>
+            <!-- Renown / XP -->
+            <div class="flex items-center gap-1.5 bg-stone-900/90 border border-purple-800/60 px-3 py-1.5 rounded-full shadow-inner">
+                <span class="text-purple-400">✨</span>
+                <span id="hud-xp" class="font-bold text-purple-200">0 / 100</span>
+                <span class="text-stone-400 text-xs">XP</span>
+            </div>
+            <!-- Audio Toggle -->
+            <button id="btn-audio-toggle" class="bg-stone-800 hover:bg-stone-700 text-amber-300 p-2 rounded-full border border-stone-700 transition active:scale-95">
+                🔊
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workshop Workspace -->
+    <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left Column: Navigation & Patron Orders (3 Cols) -->
+        <div class="lg:col-span-4 flex flex-col gap-4">
+            
+            <!-- Navigation Tabs -->
+            <div class="bg-stone-900/80 border border-amber-900/50 rounded-2xl p-2 flex gap-1 shadow-lg backdrop-blur-sm">
+                <button id="tab-workbench" onclick="switchTab('workbench')" class="flex-1 py-2 px-3 rounded-xl font-serif-title text-xs md:text-sm font-semibold transition bg-amber-700/80 text-amber-100 shadow border border-amber-500/30">
+                    🛠️ Workbench
+                </button>
+                <button id="tab-patrons" onclick="switchTab('patrons')" class="flex-1 py-2 px-3 rounded-xl font-serif-title text-xs md:text-sm font-semibold transition text-stone-400 hover:text-stone-200 hover:bg-stone-800/50">
+                    🧙‍♂️ Orders
+                </button>
+                <button id="tab-codex" onclick="switchTab('codex')" class="flex-1 py-2 px-3 rounded-xl font-serif-title text-xs md:text-sm font-semibold transition text-stone-400 hover:text-stone-200 hover:bg-stone-800/50">
+                    📚 Codex
+                </button>
+            </div>
+
+            <!-- Patron Client Requests Panel -->
+            <div id="panel-patrons" class="hidden bg-stone-900/90 border border-amber-900/50 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                <h2 class="font-serif-title text-base font-bold text-amber-300 flex items-center justify-between border-b border-stone-800 pb-2">
+                    <span>Library Clients & Commission Requests</span>
+                    <span class="text-xs font-normal text-stone-400">Patrons</span>
+                </h2>
+                <div id="patrons-list" class="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1">
+                    <!-- Dynamic Patron Request Cards inserted via JS -->
+                </div>
+            </div>
+
+            <!-- Library Codex Collection Room -->
+            <div id="panel-codex" class="hidden bg-stone-900/90 border border-amber-900/50 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                <h2 class="font-serif-title text-base font-bold text-amber-300 flex items-center justify-between border-b border-stone-800 pb-2">
+                    <span>Restored Archives & Lore</span>
+                    <span id="codex-counter" class="text-xs text-amber-500 font-normal">0 Restored</span>
+                </h2>
+                <p class="text-xs text-stone-400 italic">Click on any fully restored manuscript to read its translated contents and secret lore.</p>
+                <div id="codex-grid" class="grid grid-cols-2 gap-3 max-h-[450px] overflow-y-auto pr-1">
+                    <!-- Restored books inserted here -->
+                </div>
+            </div>
+
+            <!-- Tool Rack & Workshop Upgrades -->
+            <div id="panel-tools" class="bg-stone-900/90 border border-amber-900/50 rounded-2xl p-4 shadow-xl">
+                <h3 class="font-serif-title text-sm font-bold text-amber-300 border-b border-stone-800 pb-2 mb-3 flex justify-between items-center">
+                    <span>Master Tools & Supplies</span>
+                    <span class="text-xs text-stone-400">Upgrades</span>
+                </h3>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-stone-950/80 p-2.5 rounded-xl border border-stone-800 flex flex-col justify-between">
+                        <div>
+                            <span class="font-bold text-amber-200 block">🦔 Bone Folder</span>
+                            <span class="text-stone-400 text-[10px]">Increases alignment speed</span>
+                        </div>
+                        <button id="buy-bone-folder" onclick="buyTool('boneFolder', 80)" class="mt-2 w-full py-1 bg-amber-900/40 hover:bg-amber-800/60 border border-amber-700/50 text-amber-300 rounded text-[11px] font-semibold transition">
+                            Buy (80 🪙)
+                        </button>
+                    </div>
+                    <div class="bg-stone-950/80 p-2.5 rounded-xl border border-stone-800 flex flex-col justify-between">
+                        <div>
+                            <span class="font-bold text-amber-200 block">🖌️ Gold Leaf Brush</span>
+                            <span class="text-stone-400 text-[10px]">+25% Gold from sales</span>
+                        </div>
+                        <button id="buy-gold-brush" onclick="buyTool('goldBrush', 150)" class="mt-2 w-full py-1 bg-amber-900/40 hover:bg-amber-800/60 border border-amber-700/50 text-amber-300 rounded text-[11px] font-semibold transition">
+                            Buy (150 🪙)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Interactive Bookbinding Table / Mini-Games (8 Cols) -->
+        <div id="panel-workbench" class="lg:col-span-8 bg-stone-900/90 border border-amber-900/60 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-md relative overflow-hidden flex flex-col gap-6">
+            
+            <!-- Workbench Header Status -->
+            <div class="flex flex-wrap items-center justify-between border-b border-amber-900/40 pb-4 gap-2">
+                <div>
+                    <span id="current-stage-badge" class="px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wider bg-amber-900/60 text-amber-300 border border-amber-600/40 uppercase">
+                        Stage 1: Cleaning & Alignment
+                    </span>
+                    <h2 id="active-book-title" class="font-serif-title text-xl sm:text-2xl font-bold text-amber-100 mt-1 gold-text-glow">
+                        Grimoire of Forgotten Stars
+                    </h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="nextBookPrompt()" class="text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                        🔄 Skip / New Tome
+                    </button>
+                </div>
+            </div>
+
+            <!-- Workflow Stepper Indicator -->
+            <div class="grid grid-cols-3 gap-2 text-center text-xs font-serif-title">
+                <div id="step-btn-1" class="py-2 px-1 rounded-lg border border-amber-500 bg-amber-950/80 text-amber-200 font-bold">
+                    1. Clean & Align
+                </div>
+                <div id="step-btn-2" class="py-2 px-1 rounded-lg border border-stone-800 bg-stone-950/50 text-stone-500">
+                    2. Craft Cover
+                </div>
+                <div id="step-btn-3" class="py-2 px-1 rounded-lg border border-stone-800 bg-stone-950/50 text-stone-500">
+                    3. Rune Inscription
+                </div>
+            </div>
+
+            <!-- WORKBENCH STAGE 1: CLEANING, SCRUBBING & STITCHING -->
+            <div id="stage-1-container" class="flex flex-col items-center gap-4">
+                <div class="w-full flex justify-between items-center text-xs text-stone-300">
+                    <span>Tool: <strong id="tool-mode-text" class="text-amber-400">Sponge Brush (Scrub Ink Blots)</strong></span>
+                    <span>Restoration Progress: <strong id="stage1-progress-pct" class="text-amber-300">0%</strong></span>
+                </div>
+
+                <!-- Canvas Area for Cleaning Ink & Stitching Page -->
+                <div class="relative w-full aspect-[4/3] sm:aspect-[16/10] max-h-[380px] bg-stone-950 rounded-xl overflow-hidden border-2 border-amber-900/60 shadow-inner flex items-center justify-center">
+                    <canvas id="interactiveCanvas" class="w-full h-full block rounded-xl"></canvas>
+
+                    <!-- Instruction Overlay Helper -->
+                    <div id="stage1-hint" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-stone-900/90 border border-amber-800/80 text-amber-200 px-4 py-1.5 rounded-full text-xs shadow-lg pointer-events-none transition opacity-90 text-center">
+                        🧹 Drag mouse/finger over black ink spots to scrub them away!
+                    </div>
+                </div>
+
+                <!-- Stage 1 Tool Selection Switches -->
+                <div class="flex gap-3">
+                    <button id="btn-mode-clean" onclick="setStage1Tool('clean')" class="py-2 px-4 rounded-xl border border-amber-600 bg-amber-900/50 text-amber-200 font-serif-title text-xs font-bold shadow">
+                        🧹 Scrub Ink
+                    </button>
+                    <button id="btn-mode-stitch" onclick="setStage1Tool('stitch')" class="py-2 px-4 rounded-xl border border-stone-700 bg-stone-800 text-stone-400 font-serif-title text-xs font-bold">
+                        🪡 Stitch Pages
+                    </button>
+                    <button id="btn-finish-stage1" onclick="completeStage1()" disabled class="py-2 px-5 rounded-xl bg-stone-800 text-stone-500 text-xs font-serif-title font-bold cursor-not-allowed transition">
+                        Proceed to Binding ➔
+                    </button>
+                </div>
+            </div>
+
+            <!-- WORKBENCH STAGE 2: LEATHER BINDING & FOIL EMBOSSING -->
+            <div id="stage-2-container" class="hidden flex-col gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    
+                    <!-- Real-time Interactive 3D/Styled Book Cover Preview -->
+                    <div class="flex flex-col items-center justify-center p-4 bg-stone-950 rounded-xl border border-amber-900/40">
+                        <div id="book-cover-element" class="book-cover-preview w-48 sm:w-56 aspect-[3/4] rounded-r-xl border-l-8 border-stone-900 relative p-4 flex flex-col justify-between text-center select-none bg-amber-900">
+                            <!-- Metal Corner Guards -->
+                            <div class="corner-guard absolute top-1 left-1 text-amber-400 text-lg">⚜️</div>
+                            <div class="corner-guard absolute top-1 right-1 text-amber-400 text-lg rotate-90">⚜️</div>
+                            <div class="corner-guard absolute bottom-1 left-1 text-amber-400 text-lg -rotate-90">⚜️</div>
+                            <div class="corner-guard absolute bottom-1 right-1 text-amber-400 text-lg rotate-180">⚜️</div>
+
+                            <!-- Title Foil Stamp -->
+                            <div class="mt-6 border-y border-amber-400/40 py-2">
+                                <h3 id="cover-title-preview" class="font-serif-title text-xs sm:text-sm font-bold text-amber-200 tracking-wider">
+                                    GRIMOIRE OF STARS
+                                </h3>
+                            </div>
+
+                            <!-- Embossed Emblem -->
+                            <div id="cover-emblem-preview" class="text-4xl sm:text-5xl my-auto text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]">
+                                🌌
+                            </div>
+
+                            <!-- Spine Thread Accent -->
+                            <div class="text-[10px] text-amber-300/80 font-serif-title tracking-widest uppercase">
+                                Bound in Archive
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customizer Options -->
+                    <div class="flex flex-col gap-4">
+                        <!-- Leather Selection -->
+                        <div>
+                            <label class="block text-xs font-serif-title font-bold text-amber-300 mb-1">1. Select Leather Cover</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button onclick="setCoverLeather('amber-900', 'Dragon Calfskin')" class="p-2 rounded-lg bg-amber-900 border border-amber-600 text-xs font-medium text-amber-100 hover:scale-105 transition">
+                                    🐂 Calfskin
+                                </button>
+                                <button onclick="setCoverLeather('emerald-900', 'Enchanted Velvet')" class="p-2 rounded-lg bg-emerald-900 border border-emerald-600 text-xs font-medium text-emerald-100 hover:scale-105 transition">
+                                    🌿 Velvet
+                                </button>
+                                <button onclick="setCoverLeather('slate-900', 'Obsidian Hide')" class="p-2 rounded-lg bg-slate-900 border border-slate-600 text-xs font-medium text-slate-100 hover:scale-105 transition">
+                                    🐉 Obsidian
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Embossed Emblem -->
+                        <div>
+                            <label class="block text-xs font-serif-title font-bold text-amber-300 mb-1">2. Emboss Foil Seal</label>
+                            <div class="grid grid-cols-4 gap-2 text-xl">
+                                <button onclick="setCoverEmblem('🌌')" class="p-2 rounded-lg bg-stone-800 border border-stone-700 hover:bg-stone-700">🌌</button>
+                                <button onclick="setCoverEmblem('🐉')" class="p-2 rounded-lg bg-stone-800 border border-stone-700 hover:bg-stone-700">🐉</button>
+                                <button onclick="setCoverEmblem('🔮')" class="p-2 rounded-lg bg-stone-800 border border-stone-700 hover:bg-stone-700">🔮</button>
+                                <button onclick="setCoverEmblem('📜')" class="p-2 rounded-lg bg-stone-800 border border-stone-700 hover:bg-stone-700">📜</button>
+                            </div>
+                        </div>
+
+                        <!-- Corner Metal Guards -->
+                        <div>
+                            <label class="block text-xs font-serif-title font-bold text-amber-300 mb-1">3. Corner Corner Clasps</label>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <button onclick="setCoverGuard('⚜️')" class="p-2 rounded-lg bg-stone-800 border border-stone-700 text-amber-300">⚜️ Royal Fleur</button>
+                                <button onclick="setCoverGuard('🛡️')" class="p-2 rounded-lg bg-stone-800 border border-stone-700 text-amber-300">🛡️ Brass Shield</button>
+                            </div>
+                        </div>
+
+                        <button onclick="completeStage2()" class="mt-2 w-full py-3 bg-gradient-to-r from-amber-700 to-amber-900 hover:from-amber-600 hover:to-amber-800 text-amber-100 font-serif-title font-bold text-xs rounded-xl border border-amber-500/50 shadow-lg transition">
+                            Complete Binding & Go to Enchantment ➔
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- WORKBENCH STAGE 3: RUNIC INSCRIPTION & ENCHANTMENT -->
+            <div id="stage-3-container" class="hidden flex-col items-center gap-4 text-center">
+                <div class="max-w-md">
+                    <h3 class="font-serif-title text-base font-bold text-amber-300">Rune Enchantment Inscription</h3>
+                    <p class="text-xs text-stone-400 mt-1">Trace the ancient glowing rune onto the restored tome to seal its magic and translate its contents.</p>
+                </div>
+
+                <!-- Rune Canvas -->
+                <div class="relative w-full max-w-sm aspect-square bg-stone-950 rounded-2xl border-2 border-amber-600/60 shadow-2xl flex items-center justify-center">
+                    <canvas id="runeCanvas" width="320" height="320" class="block cursor-crosshair rounded-2xl"></canvas>
+                    <div id="rune-hint-text" class="absolute bottom-3 text-xs text-amber-400/80 bg-stone-900/80 px-3 py-1 rounded-full pointer-events-none">
+                        ✨ Connect the glowing dots!
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="resetRuneCanvas()" class="py-2 px-4 rounded-xl border border-stone-700 bg-stone-800 text-stone-300 text-xs font-semibold">
+                        Reset Pattern
+                    </button>
+                    <button id="btn-finish-stage3" onclick="completeRestoration()" disabled class="py-2 px-6 rounded-xl bg-stone-800 text-stone-500 text-xs font-serif-title font-bold transition cursor-not-allowed">
+                        Finalize & Collect Rewards ✨
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Reading Reader Modal for Restored Manuscripts -->
+    <div id="modal-reader" class="fixed inset-0 z-50 bg-stone-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="relative w-full max-w-2xl bg-amber-100 parchment-bg rounded-2xl p-6 md:p-8 border-4 border-amber-900/80 shadow-2xl text-stone-900 flex flex-col justify-between max-h-[85vh] overflow-y-auto">
+            
+            <button onclick="closeReaderModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-amber-900 text-amber-100 flex items-center justify-center font-bold hover:bg-amber-800 transition">
+                ✕
+            </button>
+
+            <div>
+                <!-- Book Header -->
+                <div class="text-center border-b-2 border-amber-900/30 pb-4 mb-4">
+                    <span id="modal-reader-category" class="text-xs uppercase font-serif-title tracking-widest text-amber-800 font-bold block">Restored Tome</span>
+                    <h2 id="modal-reader-title" class="font-serif-title text-2xl md:text-3xl font-bold text-amber-950 mt-1">
+                        Title of the Book
+                    </h2>
+                    <p id="modal-reader-author" class="text-xs font-book italic text-stone-700 mt-1">Translated by Master Bookbinder</p>
+                </div>
+
+                <!-- Book Page Excerpt Text -->
+                <div id="modal-reader-body" class="font-book text-sm md:text-base leading-relaxed text-amber-950 space-y-4">
+                    <!-- Dynamic translated story excerpt inserted here -->
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="mt-6 pt-4 border-t border-amber-900/20 flex justify-between items-center text-xs text-amber-900/70 font-serif-title">
+                <span>Archives of the Grand Library</span>
+                <span>Page 1 of 1</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Notification Toast Floating Popups -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Footer -->
+    <footer class="relative z-10 border-t border-amber-900/30 bg-stone-950/80 px-4 py-3 text-center text-xs text-stone-500">
+        <p>The Master Bookbinder & The Lost Manuscripts &bull; Built with HTML5 Canvas & Web Audio API</p>
+    </footer>
+
+    <!-- GAME ENGINE CODE -->
+    <script>
+        // --- Web Audio API Synthesizer Sound Engine ---
+        const SoundFX = {
+            ctx: null,
+            enabled: true,
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            },
+
+            play(type) {
+                if (!this.enabled) return;
+                this.init();
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+
+                const now = this.ctx.currentTime;
+
+                if (type === 'scrub') {
+                    // White noise scrub rustle
+                    const bufferSize = this.ctx.sampleRate * 0.05;
+                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                    const output = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        output[i] = Math.random() * 2 - 1;
+                    }
+                    const whiteNoise = this.ctx.createBufferSource();
+                    whiteNoise.buffer = buffer;
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.value = 800;
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+
+                    whiteNoise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    whiteNoise.start(now);
+
+                } else if (type === 'stitch') {
+                    // Pluck chime
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(320, now);
+                    osc.frequency.exponentialRampToValueAtTime(120, now + 0.1);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+
+                } else if (type === 'chime') {
+                    // Magic sparkling chime notes
+                    const freqs = [523.25, 659.25, 783.99, 1046.50];
+                    freqs.forEach((f, idx) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(f, now + idx * 0.06);
+                        gain.gain.setValueAtTime(0.15, now + idx * 0.06);
+                        gain.gain.linearRampToValueAtTime(0.001, now + idx * 0.06 + 0.3);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + idx * 0.06);
+                        osc.stop(now + idx * 0.06 + 0.3);
+                    });
+
+                } else if (type === 'click') {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.04);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.04);
+                }
+            }
+        };
+
+        // --- MANUSCRIPT DATABASE & PATRON REQUESTS ---
+        const BOOKS_DATABASE = [
+            {
+                id: 'grimoire_stars',
+                title: 'Grimoire of Forgotten Stars',
+                category: 'Celestial Astrology',
+                author: 'Archmage Solon (c. 1240)',
+                excerpt: '“When the third star of the Northern Crown aligns with the midnight eclipse, silver ink turns to liquid light. To bind the stars within leather is to whisper back to the void...”',
+                emblem: '🌌',
+                patron: {
+                    name: 'Astral Wizard Solon',
+                    avatar: '🧙‍♂️',
+                    dialogue: '“I require my ancient starry grimoire rebound in calfskin hide before tonight’s rare planetary conjunction!”',
+                    rewardGold: 150,
+                    rewardXP: 40
+                }
+            },
+            {
+                id: 'herbal_apothecary',
+                title: 'The Alchemist’s Codex',
+                category: 'Botanical Alchemy',
+                author: 'Mistress Elspeth the Herbalist',
+                excerpt: '“Nightshade crushed under a crescent moon releases a perfume that lulls restless spirits to sleep. Preserve these pressed leaves between gilded parchment...”',
+                emblem: '🔮',
+                patron: {
+                    name: 'Alchemist Elspeth',
+                    avatar: '🧪',
+                    dialogue: '“My herbal recipes are crumbling! Please clean the ink spills and bind it in emerald velvet.”',
+                    rewardGold: 120,
+                    rewardXP: 30
+                }
+            },
+            {
+                id: 'chronicles_time',
+                title: 'Chronicles of Lost Timelines',
+                category: 'Temporal Lore',
+                author: 'The Unknown Traveler',
+                excerpt: '“History is not a line, but a woven ribbon. In year 402 of the Third Era, the Great Library never burned—it simply slipped sideways into tomorrow...”',
+                emblem: '📜',
+                patron: {
+                    name: 'Time Traveler Chronos',
+                    avatar: '⏳',
+                    dialogue: '“This manuscript survived three paradoxes! It needs stitching and a durable obsidian cover.”',
+                    rewardGold: 200,
+                    rewardXP: 50
+                }
+            },
+            {
+                id: 'dragon_beastiary',
+                title: 'Atlas of Mythic Beasts',
+                category: 'Beastiary & Lore',
+                author: 'High Scholar Valerius',
+                excerpt: '“The Sun Dragon scales shine like burnished copper. They nest in volcanic chimneys, feeding upon geothermal gems and sleeping for centuries...”',
+                emblem: '🐉',
+                patron: {
+                    name: 'Scholar Valerius',
+                    avatar: '📜',
+                    dialogue: '“Restore my dragon atlas! I will pay handsomely in gold if the rune enchantment is inscribed correctly.”',
+                    rewardGold: 180,
+                    rewardXP: 45
+                }
+            }
+        ];
+
+        // --- GAME STATE ---
+        let gameState = {
+            gold: 120,
+            xp: 0,
+            rankIndex: 0,
+            tools: {
+                boneFolder: false,
+                goldBrush: false
+            },
+            activeBookIndex: 0,
+            stage: 1, // 1: Cleaning, 2: Crafting, 3: Rune
+            restoredBookIds: [],
+            
+            // Stage 1 State
+            stage1Tool: 'clean', // 'clean' or 'stitch'
+            inkSpots: [],
+            tearPoints: [],
+            cleanedPct: 0,
+            
+            // Stage 2 State
+            coverLeather: 'amber-900',
+            coverLeatherName: 'Dragon Calfskin',
+            coverEmblem: '🌌',
+            coverGuard: '⚜️',
+            
+            // Stage 3 State
+            runeProgress: 0,
+            runePoints: [],
+            userRunePath: []
+        };
+
+        const RANKS = [
+            'Apprentice Bookbinder',
+            'Journeyman Restorer',
+            'Master Conservator',
+            'Grand Archivist'
+        ];
+
+        // --- DUST PARTICLES ANIMATION ---
+        function initDustCanvas() {
+            const canvas = document.getElementById('dustCanvas');
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            for (let i = 0; i < 45; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.5 + 0.5,
+                    alpha: Math.random() * 0.5 + 0.2,
+                    vx: (Math.random() - 0.5) * 0.3,
+                    vy: (Math.random() - 0.5) * 0.2
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0) p.x = canvas.width;
+                    if (p.x > canvas.width) p.x = 0;
+                    if (p.y < 0) p.y = canvas.height;
+                    if (p.y > canvas.height) p.y = 0;
+
+                    ctx.fillStyle = `rgba(251, 191, 36, ${p.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // --- NAVIGATION & TABS ---
+        function switchTab(tabName) {
+            SoundFX.play('click');
+            const tabs = ['workbench', 'patrons', 'codex'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                const panel = document.getElementById(`panel-${t}`);
+                if (t === tabName) {
+                    btn.className = "flex-1 py-2 px-3 rounded-xl font-serif-title text-xs md:text-sm font-semibold transition bg-amber-700/80 text-amber-100 shadow border border-amber-500/30";
+                    if (panel) panel.classList.remove('hidden');
+                } else {
+                    btn.className = "flex-1 py-2 px-3 rounded-xl font-serif-title text-xs md:text-sm font-semibold transition text-stone-400 hover:text-stone-200 hover:bg-stone-800/50";
+                    if (panel) panel.classList.add('hidden');
+                }
+            });
+        }
+
+        // --- HUD UPDATES ---
+        function updateHUD() {
+            document.getElementById('hud-gold').innerText = gameState.gold;
+            document.getElementById('hud-xp').innerText = `${gameState.xp} / ${(gameState.rankIndex + 1) * 100}`;
+            document.getElementById('hud-rank').innerText = RANKS[gameState.rankIndex] || 'Grand Archivist';
+        }
+
+        function addGold(amt) {
+            let bonus = gameState.tools.goldBrush ? 1.25 : 1;
+            let finalAmt = Math.round(amt * bonus);
+            gameState.gold += finalAmt;
+            showToast(`+${finalAmt} Gold 🪙`);
+            updateHUD();
+        }
+
+        function addXP(amt) {
+            gameState.xp += amt;
+            let req = (gameState.rankIndex + 1) * 100;
+            if (gameState.xp >= req && gameState.rankIndex < RANKS.length - 1) {
+                gameState.rankIndex++;
+                SoundFX.play('chime');
+                showToast(`🎉 Promoted to ${RANKS[gameState.rankIndex]}!`);
+            }
+            updateHUD();
+        }
+
+        function buyTool(toolKey, cost) {
+            if (gameState.gold >= cost && !gameState.tools[toolKey]) {
+                gameState.gold -= cost;
+                gameState.tools[toolKey] = true;
+                SoundFX.play('chime');
+                showToast(`Purchased Upgrade!`);
+                const btn = document.getElementById(toolKey === 'boneFolder' ? 'buy-bone-folder' : 'buy-gold-brush');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerText = 'Unlocked ✓';
+                    btn.className = 'mt-2 w-full py-1 bg-stone-800 text-amber-400/60 rounded text-[11px] font-semibold cursor-default';
+                }
+                updateHUD();
+            } else if (gameState.tools[toolKey]) {
+                showToast('Already unlocked!');
+            } else {
+                showToast('Not enough gold!');
+            }
+        }
+
+        // --- WORKBENCH STAGE MANAGEMENT ---
+        function loadActiveBook(bookIdx) {
+            gameState.activeBookIndex = bookIdx;
+            const book = BOOKS_DATABASE[bookIdx];
+            document.getElementById('active-book-title').innerText = book.title;
+            document.getElementById('cover-title-preview').innerText = book.title.toUpperCase();
+            document.getElementById('cover-emblem-preview').innerText = book.emblem;
+            gameState.coverEmblem = book.emblem;
+
+            setStage(1);
+        }
+
+        function setStage(stageNum) {
+            gameState.stage = stageNum;
+            SoundFX.play('click');
+
+            document.getElementById('stage-1-container').classList.add('hidden');
+            document.getElementById('stage-2-container').classList.add('hidden');
+            document.getElementById('stage-3-container').classList.add('hidden');
+
+            for (let i = 1; i <= 3; i++) {
+                const stepBtn = document.getElementById(`step-btn-${i}`);
+                if (i === stageNum) {
+                    stepBtn.className = "py-2 px-1 rounded-lg border border-amber-500 bg-amber-950/80 text-amber-200 font-bold";
+                } else if (i < stageNum) {
+                    stepBtn.className = "py-2 px-1 rounded-lg border border-emerald-700 bg-emerald-950/50 text-emerald-300";
+                } else {
+                    stepBtn.className = "py-2 px-1 rounded-lg border border-stone-800 bg-stone-950/50 text-stone-500";
+                }
+            }
+
+            if (stageNum === 1) {
+                document.getElementById('stage-1-container').classList.remove('hidden');
+                document.getElementById('current-stage-badge').innerText = "Stage 1: Cleaning & Alignment";
+                initStage1Canvas();
+            } else if (stageNum === 2) {
+                document.getElementById('stage-2-container').classList.remove('hidden');
+                document.getElementById('current-stage-badge').innerText = "Stage 2: Leather Binding";
+            } else if (stageNum === 3) {
+                document.getElementById('stage-3-container').classList.remove('hidden');
+                document.getElementById('current-stage-badge').innerText = "Stage 3: Rune Inscription";
+                initRuneCanvas();
+            }
+        }
+
+        // --- STAGE 1 CANVAS: INK SCRUBBING & STITCHING ---
+        let c1, ctx1;
+
+        function initStage1Canvas() {
+            c1 = document.getElementById('interactiveCanvas');
+            ctx1 = c1.getContext('2d');
+            
+            // Adjust canvas size to container
+            const rect = c1.parentElement.getBoundingClientRect();
+            c1.width = rect.width;
+            c1.height = rect.height;
+
+            // Generate random ink spots & tear line points
+            gameState.inkSpots = [];
+            for (let i = 0; i < 6; i++) {
+                gameState.inkSpots.push({
+                    x: Math.random() * (c1.width - 120) + 60,
+                    y: Math.random() * (c1.height - 120) + 60,
+                    radius: Math.random() * 25 + 20,
+                    cleanedPct: 0
+                });
+            }
+
+            gameState.tearPoints = [
+                { x: c1.width * 0.2, y: c1.height * 0.3, stitched: false },
+                { x: c1.width * 0.35, y: c1.height * 0.45, stitched: false },
+                { x: c1.width * 0.5, y: c1.height * 0.35, stitched: false },
+                { x: c1.width * 0.65, y: c1.height * 0.55, stitched: false },
+                { x: c1.width * 0.8, y: c1.height * 0.4, stitched: false }
+            ];
+
+            renderStage1();
+            setupStage1Input();
+        }
+
+        function renderStage1() {
+            if (!ctx1) return;
+
+            // Render Parchment background
+            ctx1.fillStyle = '#f3e5ab';
+            ctx1.fillRect(0, 0, c1.width, c1.height);
+
+            // Draw faint page text lines
+            ctx1.fillStyle = '#8c6d46';
+            ctx1.font = '14px "IM Fell English"';
+            for (let y = 50; y < c1.height - 30; y += 24) {
+                ctx1.fillText('Lorem ipsum magicum manuscriptum antiqua parchmentum illuminata...', 40, y);
+            }
+
+            // Draw Tear Line
+            ctx1.strokeStyle = '#2b1810';
+            ctx1.lineWidth = 2;
+            ctx1.beginPath();
+            ctx1.moveTo(gameState.tearPoints[0].x, gameState.tearPoints[0].y);
+            for (let i = 1; i < gameState.tearPoints.length; i++) {
+                ctx1.lineTo(gameState.tearPoints[i].x, gameState.tearPoints[i].y);
+            }
+            ctx1.stroke();
+
+            // Draw Stitch Points
+            gameState.tearPoints.forEach(p => {
+                if (p.stitched) {
+                    ctx1.fillStyle = '#d97706';
+                    ctx1.beginPath();
+                    ctx1.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                    ctx1.fill();
+                    ctx1.strokeStyle = '#fef08a';
+                    ctx1.stroke();
+                } else {
+                    ctx1.fillStyle = '#78350f';
+                    ctx1.beginPath();
+                    ctx1.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                    ctx1.fill();
+                }
+            });
+
+            // Draw Ink Blots
+            gameState.inkSpots.forEach(spot => {
+                if (spot.cleanedPct < 1) {
+                    ctx1.fillStyle = `rgba(15, 23, 42, ${1 - spot.cleanedPct})`;
+                    ctx1.beginPath();
+                    ctx1.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
+                    ctx1.fill();
+                }
+            });
+
+            calculateStage1Progress();
+        }
+
+        function setStage1Tool(mode) {
+            gameState.stage1Tool = mode;
+            SoundFX.play('click');
+            const btnClean = document.getElementById('btn-mode-clean');
+            const btnStitch = document.getElementById('btn-mode-stitch');
+            const hint = document.getElementById('stage1-hint');
+
+            if (mode === 'clean') {
+                btnClean.className = "py-2 px-4 rounded-xl border border-amber-600 bg-amber-900/50 text-amber-200 font-serif-title text-xs font-bold shadow";
+                btnStitch.className = "py-2 px-4 rounded-xl border border-stone-700 bg-stone-800 text-stone-400 font-serif-title text-xs font-bold";
+                document.getElementById('tool-mode-text').innerText = "Sponge Brush (Scrub Ink Blots)";
+                hint.innerText = "🧹 Drag over black ink spots to scrub them away!";
+            } else {
+                btnStitch.className = "py-2 px-4 rounded-xl border border-amber-600 bg-amber-900/50 text-amber-200 font-serif-title text-xs font-bold shadow";
+                btnClean.className = "py-2 px-4 rounded-xl border border-stone-700 bg-stone-800 text-stone-400 font-serif-title text-xs font-bold";
+                document.getElementById('tool-mode-text').innerText = "Needle & Thread (Click Tear Points)";
+                hint.innerText = "🪡 Click on each hole along the tear line to stitch!";
+            }
+        }
+
+        function setupStage1Input() {
+            let isDrawing = false;
+
+            const handlePointer = (e) => {
+                const rect = c1.getBoundingClientRect();
+                const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+                const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+
+                if (gameState.stage1Tool === 'clean' && isDrawing) {
+                    let cleanedAny = false;
+                    gameState.inkSpots.forEach(spot => {
+                        const dist = Math.hypot(spot.x - x, spot.y - y);
+                        if (dist < spot.radius + 15 && spot.cleanedPct < 1) {
+                            spot.cleanedPct += gameState.tools.boneFolder ? 0.08 : 0.05;
+                            cleanedAny = true;
+                        }
+                    });
+                    if (cleanedAny) SoundFX.play('scrub');
+                    renderStage1();
+                } else if (gameState.stage1Tool === 'stitch') {
+                    gameState.tearPoints.forEach(p => {
+                        const dist = Math.hypot(p.x - x, p.y - y);
+                        if (dist < 18 && !p.stitched) {
+                            p.stitched = true;
+                            SoundFX.play('stitch');
+                            renderStage1();
+                        }
+                    });
+                }
+            };
+
+            c1.onmousedown = (e) => { isDrawing = true; handlePointer(e); };
+            c1.onmousemove = (e) => { handlePointer(e); };
+            window.onmouseup = () => { isDrawing = false; };
+
+            c1.ontouchstart = (e) => { isDrawing = true; handlePointer(e); };
+            c1.ontouchmove = (e) => { handlePointer(e); };
+            c1.ontouchend = () => { isDrawing = false; };
+        }
+
+        function calculateStage1Progress() {
+            let totalInkCleaned = gameState.inkSpots.reduce((acc, spot) => acc + Math.min(1, spot.cleanedPct), 0);
+            let inkRatio = totalInkCleaned / gameState.inkSpots.length;
+
+            let stitchedCount = gameState.tearPoints.filter(p => p.stitched).length;
+            let stitchRatio = stitchedCount / gameState.tearPoints.length;
+
+            let totalPct = Math.round((inkRatio * 0.6 + stitchRatio * 0.4) * 100);
+            document.getElementById('stage1-progress-pct').innerText = `${totalPct}%`;
+
+            const finishBtn = document.getElementById('btn-finish-stage1');
+            if (totalPct >= 80) {
+                finishBtn.disabled = false;
+                finishBtn.className = "py-2 px-5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-800 text-amber-100 text-xs font-serif-title font-bold shadow-lg hover:scale-105 transition cursor-pointer";
+            }
+        }
+
+        function completeStage1() {
+            SoundFX.play('chime');
+            setStage(2);
+        }
+
+        // --- STAGE 2: CUSTOMIZER ---
+        function setCoverLeather(colorClass, name) {
+            gameState.coverLeather = colorClass;
+            gameState.coverLeatherName = name;
+            SoundFX.play('click');
+            const el = document.getElementById('book-cover-element');
+            el.className = `book-cover-preview w-48 sm:w-56 aspect-[3/4] rounded-r-xl border-l-8 border-stone-900 relative p-4 flex flex-col justify-between text-center select-none bg-${colorClass}`;
+        }
+
+        function setCoverEmblem(emblem) {
+            gameState.coverEmblem = emblem;
+            SoundFX.play('click');
+            document.getElementById('cover-emblem-preview').innerText = emblem;
+        }
+
+        function setCoverGuard(guardSymbol) {
+            gameState.coverGuard = guardSymbol;
+            SoundFX.play('click');
+            document.querySelectorAll('.corner-guard').forEach(el => el.innerText = guardSymbol);
+        }
+
+        function completeStage2() {
+            SoundFX.play('chime');
+            setStage(3);
+        }
+
+        // --- STAGE 3: RUNE CANVAS ---
+        let cRune, ctxRune;
+
+        function initRuneCanvas() {
+            cRune = document.getElementById('runeCanvas');
+            ctxRune = cRune.getContext('2d');
+
+            gameState.runePoints = [
+                { x: 160, y: 50, hit: false },
+                { x: 260, y: 160, hit: false },
+                { x: 210, y: 270, hit: false },
+                { x: 110, y: 270, hit: false },
+                { x: 60, y: 160, hit: false }
+            ];
+            gameState.userRunePath = [];
+
+            renderRuneCanvas();
+            setupRuneInput();
+        }
+
+        function renderRuneCanvas() {
+            if (!ctxRune) return;
+            ctxRune.clearRect(0, 0, cRune.width, cRune.height);
+
+            // Draw connections between hit points
+            if (gameState.userRunePath.length > 1) {
+                ctxRune.strokeStyle = '#fbbf24';
+                ctxRune.lineWidth = 4;
+                ctxRune.shadowBlur = 12;
+                ctxRune.shadowColor = '#d97706';
+                ctxRune.beginPath();
+                ctxRune.moveTo(gameState.userRunePath[0].x, gameState.userRunePath[0].y);
+                for (let i = 1; i < gameState.userRunePath.length; i++) {
+                    ctxRune.lineTo(gameState.userRunePath[i].x, gameState.userRunePath[i].y);
+                }
+                ctxRune.stroke();
+                ctxRune.shadowBlur = 0;
+            }
+
+            // Draw Rune Nodes
+            gameState.runePoints.forEach((p, idx) => {
+                ctxRune.fillStyle = p.hit ? '#fef08a' : '#78350f';
+                ctxRune.beginPath();
+                ctxRune.arc(p.x, p.y, p.hit ? 12 : 9, 0, Math.PI * 2);
+                ctxRune.fill();
+                ctxRune.strokeStyle = '#fbbf24';
+                ctxRune.lineWidth = 2;
+                ctxRune.stroke();
+            });
+
+            // Check completion
+            let allHit = gameState.runePoints.every(p => p.hit);
+            const finishBtn = document.getElementById('btn-finish-stage3');
+            if (allHit) {
+                finishBtn.disabled = false;
+                finishBtn.className = "py-2 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-800 text-emerald-100 text-xs font-serif-title font-bold shadow-lg hover:scale-105 transition cursor-pointer";
+                document.getElementById('rune-hint-text').innerText = "✨ Rune Sealed! Click Finalize!";
+            }
+        }
+
+        function setupRuneInput() {
+            let isDrawing = false;
+
+            const handlePointer = (e) => {
+                if (!isDrawing) return;
+                const rect = cRune.getBoundingClientRect();
+                const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+                const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+
+                gameState.runePoints.forEach(p => {
+                    if (!p.hit && Math.hypot(p.x - x, p.y - y) < 25) {
+                        p.hit = true;
+                        gameState.userRunePath.push({ x: p.x, y: p.y });
+                        SoundFX.play('chime');
+                        renderRuneCanvas();
+                    }
+                });
+            };
+
+            cRune.onmousedown = (e) => { isDrawing = true; handlePointer(e); };
+            cRune.onmousemove = (e) => { handlePointer(e); };
+            window.onmouseup = () => { isDrawing = false; };
+
+            cRune.ontouchstart = (e) => { isDrawing = true; handlePointer(e); };
+            cRune.ontouchmove = (e) => { handlePointer(e); };
+            cRune.ontouchend = () => { isDrawing = false; };
+        }
+
+        function resetRuneCanvas() {
+            SoundFX.play('click');
+            initRuneCanvas();
+        }
+
+        // --- COMPLETE MANUSCRIPT RESTORATION ---
+        function completeRestoration() {
+            const book = BOOKS_DATABASE[gameState.activeBookIndex];
+            
+            // Add to restored codex
+            if (!gameState.restoredBookIds.includes(book.id)) {
+                gameState.restoredBookIds.push(book.id);
+            }
+
+            // Reward Gold & XP
+            addGold(book.patron.rewardGold);
+            addXP(book.patron.rewardXP);
+
+            SoundFX.play('chime');
+            showToast(`Restored "${book.title}"!`);
+
+            renderPatronRequests();
+            renderCodex();
+
+            // Next book or prompt
+            nextBookPrompt();
+        }
+
+        function nextBookPrompt() {
+            let nextIdx = (gameState.activeBookIndex + 1) % BOOKS_DATABASE.length;
+            loadActiveBook(nextIdx);
+        }
+
+        // --- PATRONS & CLIENT REQUESTS PANEL ---
+        function renderPatronRequests() {
+            const list = document.getElementById('patrons-list');
+            list.innerHTML = '';
+
+            BOOKS_DATABASE.forEach((book, idx) => {
+                const isRestored = gameState.restoredBookIds.includes(book.id);
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl border flex flex-col gap-2 ${isRestored ? 'bg-stone-950/60 border-stone-800 opacity-60' : 'bg-stone-950 border-amber-900/40 hover:border-amber-600/60 transition'}`;
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-stone-800 pb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">${book.patron.avatar}</span>
+                            <div>
+                                <span class="font-serif-title text-xs font-bold text-amber-200 block">${book.patron.name}</span>
+                                <span class="text-[10px] text-stone-400">${book.title}</span>
+                            </div>
+                        </div>
+                        <span class="text-xs font-bold text-amber-400">🪙 ${book.patron.rewardGold}</span>
+                    </div>
+                    <p class="text-xs text-stone-300 font-book italic">“${book.patron.dialogue}”</p>
+                    <button onclick="loadActiveBook(${idx}); switchTab('workbench');" ${isRestored ? 'disabled' : ''} class="mt-1 w-full py-1.5 rounded-lg text-xs font-serif-title font-bold ${isRestored ? 'bg-stone-800 text-stone-500 cursor-default' : 'bg-amber-900/60 hover:bg-amber-800 text-amber-200 border border-amber-600/50 transition'}">
+                        ${isRestored ? 'Completed ✓' : 'Accept Commission ➔'}
+                    </button>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        // --- LIBRARY CODEX COLLECTION ROOM ---
+        function renderCodex() {
+            const grid = document.getElementById('codex-grid');
+            grid.innerHTML = '';
+
+            document.getElementById('codex-counter').innerText = `${gameState.restoredBookIds.length} / ${BOOKS_DATABASE.length} Restored`;
+
+            BOOKS_DATABASE.forEach(book => {
+                const isRestored = gameState.restoredBookIds.includes(book.id);
+                const item = document.createElement('div');
+                item.className = `p-3 rounded-xl border flex flex-col items-center text-center justify-between gap-2 aspect-[3/4] ${isRestored ? 'bg-amber-950/40 border-amber-700/60 cursor-pointer hover:scale-105 transition shadow-lg' : 'bg-stone-950 border-stone-800 opacity-40 select-none'}`;
+
+                item.innerHTML = `
+                    <div class="text-3xl my-auto">${isRestored ? book.emblem : '🔒'}</div>
+                    <div>
+                        <h4 class="font-serif-title text-[11px] font-bold text-amber-200 line-clamp-2">${book.title}</h4>
+                        <span class="text-[9px] text-stone-400 block mt-0.5">${book.category}</span>
+                    </div>
+                `;
+
+                if (isRestored) {
+                    item.onclick = () => openReaderModal(book);
+                }
+
+                grid.appendChild(item);
+            });
+        }
+
+        // --- READER MODAL ---
+        function openReaderModal(book) {
+            SoundFX.play('chime');
+            document.getElementById('modal-reader-title').innerText = book.title;
+            document.getElementById('modal-reader-category').innerText = book.category;
+            document.getElementById('modal-reader-author').innerText = `Authored by ${book.author}`;
+            document.getElementById('modal-reader-body').innerHTML = `<p>${book.excerpt}</p>`;
+
+            document.getElementById('modal-reader').classList.remove('hidden');
+        }
+
+        function closeReaderModal() {
+            SoundFX.play('click');
+            document.getElementById('modal-reader').classList.add('hidden');
+        }
+
+        // --- TOAST POPUP NOTIFICATIONS ---
+        function showToast(msg) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = "bg-stone-900 border border-amber-600/80 text-amber-200 px-4 py-2 rounded-xl text-xs font-serif-title shadow-2xl transition opacity-0 transform translate-y-2";
+            toast.innerText = msg;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            initDustCanvas();
+            updateHUD();
+            renderPatronRequests();
+            renderCodex();
+            loadActiveBook(0);
+
+            // Audio Toggle
+            document.getElementById('btn-audio-toggle').onclick = function() {
+                SoundFX.enabled = !SoundFX.enabled;
+                this.innerText = SoundFX.enabled ? '🔊' : '🔇';
+            };
+        };
+    </script>
+</body>
+</html>
+```
+
+### Features Included:
+1. **Parchment & Dark Academia Styling**: Textured backgrounds, gold leaf borders, animated ambient dust particles, and custom typography.
+2. **Interactive Workbench Engine**:
+   - **Stage 1 (Restoration)**: Canvas scrubbing for ink spots and click-stitching tear lines.
+   - **Stage 2 (Crafting)**: Real-time 3D styled leather cover customizer with leather calfskin types, corner guards, and embossed emblems.
+   - **Stage 3 (Runes)**: Node-connection rune tracer to seal the grimoire's magic.
+3. **Patron Commission System**: Take orders from Wizards, Alchemists, Time Travelers, and Scholars to earn Gold and Renown XP.
+4. **Library Codex Modal**: Flip open restored manuscripts in your collection to read secret translated lore.
+5. **Web Audio Synthesizer**: Built-in sound effects for scrubbing, stitching, clicks, and magic chimes without external audio dependencies.
