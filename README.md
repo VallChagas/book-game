@@ -1,6 +1,7 @@
 # The Master Bookbinder & The Lost Manuscripts
 
 A web-based manuscript restoration game where players clean, bind, and enchant ancient tomes for legendary patrons.
+> **Live**: https://vallchagas.github.io/book-game/
 
 ## Table of Contents
 
