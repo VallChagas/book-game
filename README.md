@@ -28,7 +28,7 @@ It is a single-file HTML application with zero external dependencies beyond CDN-
 This is a static web project with no build step or dependencies to install. Simply clone the repository and open the file in a browser.
 
 ```bash
-git clone https://github.com/your-username/your-repo.git
+git clone https://github.com/VallChagas/book-game.git
 cd your-repo
 ```
 
@@ -89,7 +89,7 @@ The project is deployed for free via **GitHub Pages**:
 4. Save. The game will be live at:
 
 ```text
-https://your-username.github.io/your-repo/
+https://vallchagas.github.io/book-game/
 ```
 
 ## Maintainers
@@ -108,7 +108,7 @@ Contact via GitHub Issues on the repository.
 
 Questions and feedback are welcome via GitHub Issues:
 
-<https://github.com/your-username/your-repo/issues>
+<https://https://github.com/VallChagas/book-game/issues>
 
 Pull requests are accepted for:
 
